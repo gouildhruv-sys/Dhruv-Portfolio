@@ -90,7 +90,7 @@ window.claude={use:async n=>{
  if(n==='user'){let ok=localStorage.getItem('adm_ok')==='1';
   if(!ok&&(location.hash==='#admin'||/\/admin\/?$/.test(location.pathname))&&prompt('Admin password')===ADMIN_PASSWORD){ok=true;localStorage.setItem('adm_ok','1');}
   return {canEdit:()=>ok};}
- if(n==='assets')return {upload:f=>new Promise((res,rej)=>{if(f.size>8e6)return rej(new Error('File too big (max 8 MB in this version)'));const r=new FileReader();r.onload=()=>res({url:r.result});r.onerror=()=>rej(new Error('Read failed'));r.readAsDataURL(f);})};
+ if(n==='assets')return {upload:f=>new Promise((res,rej)=>{if(f.size>8e6)return rej(new Error('Too big to upload. Paste a YouTube, Drive or .mp4 link instead'));const r=new FileReader();r.onload=()=>res({url:r.result});r.onerror=()=>rej(new Error('Read failed'));r.readAsDataURL(f);})};
  if(n==='artifact')return {publish:async h=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([h],{type:'text/html'}));a.download='index.html';document.body.appendChild(a);a.click();a.remove();alert('Done! Upload this new index.html to your hosting to update the live site.');}};
  return null;}};
 }
@@ -100,12 +100,17 @@ const S=JSON.parse(document.getElementById('data').textContent);
 const app=document.getElementById('app');
 let cur='INR',claudeUser=null,isAdmin=false;
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const safeUrl=u=>/^(https?:\/\/|\/_blob\/|data:(image|video)\/)/.test(u)?u:'';
+const safeUrl=u=>/^(https?:\/\/|\/|videos\/|images\/|data:(image|video)\/)/.test(u)?u:'';
 const ICON_D='<svg viewBox="0 0 24 24"><path d="M20.3 4.4A19.8 19.8 0 0 0 15.4 3l-.2.5a18.3 18.3 0 0 0-6.4 0L8.6 3a19.8 19.8 0 0 0-4.9 1.4C.6 9 0 13.5.3 18a19.9 19.9 0 0 0 6 3l1.3-2.1c-.7-.3-1.4-.6-2-1l.5-.4a14.2 14.2 0 0 0 11.8 0l.5.4c-.6.4-1.3.7-2 1l1.3 2.1a19.9 19.9 0 0 0 6-3c.4-5.2-.7-9.7-3.4-13.6ZM8.5 15.3c-1.2 0-2.1-1.1-2.1-2.4s.9-2.4 2.1-2.4 2.1 1.1 2.1 2.4-.9 2.4-2.1 2.4Zm7 0c-1.2 0-2.1-1.1-2.1-2.4s.9-2.4 2.1-2.4 2.1 1.1 2.1 2.4-.9 2.4-2.1 2.4Z"/></svg>';
 const ICON_I='<svg viewBox="0 0 24 24"><path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5Zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7Zm5 3.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Zm5.2-3.2a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2Z"/></svg>';
 
 function fmt(v){if(cur==='INR')return '₹'+Math.round(v).toLocaleString('en-IN');const x=v/S.rate;return '$'+(x<10?(+x.toFixed(1)):Math.round(x));}
 const disc=v=>S.offer.on?v*(100-S.offer.pct)/100:v;
+function vid(u){const f='<iframe allowfullscreen loading="lazy" style="position:absolute;inset:0;width:100%;height:100%;border:0" src="';
+let m=u.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|shorts\/|embed\/))([\w-]{11})/);if(m)return f+'https://www.youtube.com/embed/'+m[1]+'"></iframe>';
+m=u.match(/vimeo\.com\/(\d+)/);if(m)return f+'https://player.vimeo.com/video/'+m[1]+'"></iframe>';
+m=u.match(/drive\.google\.com\/file\/d\/([\w-]+)/);if(m)return f+'https://drive.google.com/file/d/'+m[1]+'/preview"></iframe>';
+return '<video src="'+esc(u)+'" controls playsinline preload="metadata"></video>';}
 function render(){
   const pl='<div class="play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>';
   const tx=S.tx;
@@ -114,7 +119,7 @@ function render(){
   '<section class="hero"><div><h1>'+esc(tx.title)+'</h1><p class="sub">'+esc(tx.sub)+'</p><div class="cta"><a class="btn" href="#pricing">See pricing</a><a class="btn ghost" href="#contact">Get in touch</a></div></div>'+
   '<div class="photo tilt">'+(safeUrl(S.photo)?'<img alt="Dhruv" src="'+esc(S.photo)+'">':'<span>Photo coming soon</span>')+'</div></section>'+
   '<h2 id="work" style="margin-top:50px">My Work</h2><p class="lead">A few of my best edits.</p><div class="slots">'+
-  S.videos.map(v=>'<div class="slot tilt"><span class="tag">'+esc(v.l)+'</span>'+(safeUrl(v.u)?'<video src="'+esc(v.u)+'" controls playsinline preload="metadata"></video>':'<div style="text-align:center">'+pl+'Coming soon</div>')+'</div>').join('')+'</div>'+
+  S.videos.map(v=>'<div class="slot tilt"><span class="tag">'+esc(v.l)+'</span>'+(safeUrl(v.u)?vid(v.u):'<div style="text-align:center">'+pl+'Coming soon</div>')+'</div>').join('')+'</div>'+
   '<section id="pricing"><h2>Pricing</h2><div class="bar"><p class="lead" style="margin:0">Final price depends on video type, motion and quality.</p><div class="tog" role="group" aria-label="Currency"><button id="inr" aria-pressed="'+(cur==='INR')+'">₹ INR</button><button id="usd" aria-pressed="'+(cur==='USD')+'">$ USD</button></div></div><div class="grid">'+
   S.cards.map(c=>{const a=c.a,b=c.b;const o=S.offer.on;return '<div class="card tilt">'+(o?'<span class="off">'+S.offer.pct+'% OFF</span>':'')+'<h3>'+esc(c.t)+'</h3><p class="len">'+esc(c.l)+'</p><div class="price">'+fmt(disc(a))+' – '+fmt(disc(b))+(o?'<span class="was">'+fmt(a)+' – '+fmt(b)+'</span>':'')+'</div></div>';}).join('')+
   '<div class="card big tilt"><div><h3>'+esc(tx.ctitle)+'</h3><p>'+esc(tx.ctext)+'</p></div><a class="btn" href="#contact">Book a live edit</a></div></div>'+
@@ -139,11 +144,12 @@ function openAdmin(){
   if(!draft)draft=JSON.parse(JSON.stringify(S));
   const num=(p,l)=>'<div class="row"><label>'+l+'</label><input type="number" min="0" data-k="'+p+'" value="'+get(draft,p)+'"></div>';
   const txt=(p,l)=>'<div class="row"><label>'+l+'</label><input type="text" data-k="'+p+'" value="'+esc(get(draft,p))+'"></div>';
+  const lk=(p,l,ph)=>'<div class="row"><label>'+l+'</label><input type="text" data-k="'+p+'" placeholder="'+ph+'" value="'+esc(String(get(draft,p)).startsWith('data:')?'':get(draft,p))+'"></div>';
   const up=(p,l,acc)=>'<div class="row"><label>'+l+'</label><input type="file" accept="'+acc+'" data-up="'+p+'"><span class="st" data-st="'+p+'">'+(get(draft,p)?'Added ✓':'')+'</span></div>';
   a.innerHTML='<div class="panel"><h3>Admin panel</h3><p class="lead">Change anything, then press Save. Everyone sees the update.</p>'+
   '<h4>New-client offer</h4><div class="row"><label>Offer on</label><input type="checkbox" id="oon" '+(draft.offer.on?'checked':'')+'></div>'+num('offer.pct','Discount %')+
   '<h4>Page text</h4>'+txt('tx.title','Main title')+txt('tx.sub','Intro text')+txt('tx.ctitle','Live edit title')+txt('tx.ctext','Live edit text')+'<h4>Pricing cards (₹, before discount)</h4>'+draft.cards.map((c,i)=>'<div class="blk">'+txt('cards.'+i+'.t','Name')+txt('cards.'+i+'.l','Details')+num('cards.'+i+'.a','Min price')+num('cards.'+i+'.b','Max price')+'<button class="btn ghost sm" data-del="cards.'+i+'">Remove</button></div>').join('')+'<button class="btn ghost sm" data-add="cards">+ Add pricing card</button>'+num('rate','₹ per $1')+
-  '<h4>Photo and videos</h4>'+up('photo','Your photo','image/*')+draft.videos.map((v,i)=>'<div class="blk">'+txt('videos.'+i+'.l','Video title')+up('videos.'+i+'.u','Video file','video/*')+'<button class="btn ghost sm" data-del="videos.'+i+'">Remove</button></div>').join('')+'<button class="btn ghost sm" data-add="videos">+ Add video slot</button>'+
+  '<h4>Photo and videos</h4>'+lk('photo','Photo link (optional)','https://...')+up('photo','Or upload photo (small)','image/*')+draft.videos.map((v,i)=>'<div class="blk">'+txt('videos.'+i+'.l','Video title')+lk('videos.'+i+'.u','Video link (no size limit)','YouTube, Google Drive, Vimeo or .mp4 link')+up('videos.'+i+'.u','Or upload file (max 8 MB)','video/*')+'<button class="btn ghost sm" data-del="videos.'+i+'">Remove</button></div>').join('')+'<button class="btn ghost sm" data-add="videos">+ Add video slot</button>'+
   '<h4>Social links</h4>'+txt('discord','Discord link')+txt('insta','Instagram link')+
   '<div class="row" style="margin-top:22px"><button class="btn" id="asv">Save and publish</button><button class="btn ghost" id="ac">Cancel</button><span class="st" id="ams"></span></div></div>';
   document.body.appendChild(a);
