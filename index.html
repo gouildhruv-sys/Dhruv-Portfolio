@@ -83,11 +83,24 @@ footer{text-align:center;color:var(--mut);padding:30px 20px 40px;font-size:.9rem
 <script type="application/json" id="data">{"photo":"","videos":[{"l":"Featured Edit","u":""},{"l":"Reel Edit","u":""},{"l":"Ad Edit","u":""}],"offer":{"on":true,"pct":10},"cards":[{"t":"Long Video Edit","l":"10–15 minutes","a":500,"b":1000},{"t":"Short Edit","l":"1–5 minutes","a":100,"b":200},{"t":"Reel Edit","l":"0–90 seconds","a":100,"b":200},{"t":"Advertisement","l":"Brand and product ads","a":1000,"b":2000}],"tx":{"title":"Dhruv’s Portfolio","sub":"I’m Dhruv, a video editor. I turn raw footage into smooth, sharp edits that keep people watching.","ctitle":"Customised Live Edit","ctext":"Great value for money. I edit live based on your video, exactly the way you ask."},"discord":"https://discord.com","insta":"https://instagram.com","rate":85}</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
+/* Standalone mode: runs when the page is NOT inside Claude. Change the password below. */
+if(typeof claude==='undefined'){
+const ADMIN_PASSWORD='dhruv123';
+window.claude={use:async n=>{
+ if(n==='user'){let ok=localStorage.getItem('adm_ok')==='1';
+  if(!ok&&location.hash==='#admin'&&prompt('Admin password')===ADMIN_PASSWORD){ok=true;localStorage.setItem('adm_ok','1');}
+  return {canEdit:()=>ok};}
+ if(n==='assets')return {upload:f=>new Promise((res,rej)=>{if(f.size>8e6)return rej(new Error('File too big (max 8 MB in this version)'));const r=new FileReader();r.onload=()=>res({url:r.result});r.onerror=()=>rej(new Error('Read failed'));r.readAsDataURL(f);})};
+ if(n==='artifact')return {publish:async h=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([h],{type:'text/html'}));a.download='index.html';document.body.appendChild(a);a.click();a.remove();alert('Done! Upload this new index.html to your hosting to update the live site.');}};
+ return null;}};
+}
+</script>
+<script>
 const S=JSON.parse(document.getElementById('data').textContent);
 const app=document.getElementById('app');
 let cur='INR',claudeUser=null,isAdmin=false;
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const safeUrl=u=>/^(https?:\/\/|\/_blob\/)/.test(u)?u:'';
+const safeUrl=u=>/^(https?:\/\/|\/_blob\/|data:(image|video)\/)/.test(u)?u:'';
 const ICON_D='<svg viewBox="0 0 24 24"><path d="M20.3 4.4A19.8 19.8 0 0 0 15.4 3l-.2.5a18.3 18.3 0 0 0-6.4 0L8.6 3a19.8 19.8 0 0 0-4.9 1.4C.6 9 0 13.5.3 18a19.9 19.9 0 0 0 6 3l1.3-2.1c-.7-.3-1.4-.6-2-1l.5-.4a14.2 14.2 0 0 0 11.8 0l.5.4c-.6.4-1.3.7-2 1l1.3 2.1a19.9 19.9 0 0 0 6-3c.4-5.2-.7-9.7-3.4-13.6ZM8.5 15.3c-1.2 0-2.1-1.1-2.1-2.4s.9-2.4 2.1-2.4 2.1 1.1 2.1 2.4-.9 2.4-2.1 2.4Zm7 0c-1.2 0-2.1-1.1-2.1-2.4s.9-2.4 2.1-2.4 2.1 1.1 2.1 2.4-.9 2.4-2.1 2.4Z"/></svg>';
 const ICON_I='<svg viewBox="0 0 24 24"><path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5Zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7Zm5 3.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Zm5.2-3.2a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2Z"/></svg>';
 
