@@ -88,7 +88,7 @@ if(typeof claude==='undefined'){
 const ADMIN_PASSWORD='dhruv123';
 window.claude={use:async n=>{
  if(n==='user'){let ok=localStorage.getItem('adm_ok')==='1';
-  if(!ok&&location.hash==='#admin'&&prompt('Admin password')===ADMIN_PASSWORD){ok=true;localStorage.setItem('adm_ok','1');}
+  if(!ok&&(location.hash==='#admin'||/\/admin\/?$/.test(location.pathname))&&prompt('Admin password')===ADMIN_PASSWORD){ok=true;localStorage.setItem('adm_ok','1');}
   return {canEdit:()=>ok};}
  if(n==='assets')return {upload:f=>new Promise((res,rej)=>{if(f.size>8e6)return rej(new Error('File too big (max 8 MB in this version)'));const r=new FileReader();r.onload=()=>res({url:r.result});r.onerror=()=>rej(new Error('Read failed'));r.readAsDataURL(f);})};
  if(n==='artifact')return {publish:async h=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([h],{type:'text/html'}));a.download='index.html';document.body.appendChild(a);a.click();a.remove();alert('Done! Upload this new index.html to your hosting to update the live site.');}};
@@ -132,7 +132,7 @@ const get=(o,p)=>p.split('.').reduce((a,k)=>a&&a[k],o);
 function set(o,p,v){const ks=p.split('.');const l=ks.pop();ks.reduce((a,k)=>a[k],o)[l]=v;}
 function closeAdmin(){const a=document.getElementById('adm');if(a)a.remove();if(location.hash==='#admin')history.replaceState(null,'',location.pathname+location.search);}
 function openAdmin(){
-  if(location.hash!=='#admin'){return}
+  if(!(location.hash==='#admin'||/\/admin\/?$/.test(location.pathname))){return}
   let a=document.getElementById('adm');if(a)a.remove();
   a=document.createElement('div');a.id='adm';
   if(!isAdmin){a.innerHTML='<div class="panel"><h3>Admin</h3><p class="lead">Only the site owner can open this panel. Open this page while signed in to the owner’s Claude account.</p><button class="btn sm" id="ac">Close</button></div>';document.body.appendChild(a);document.getElementById('ac').onclick=closeAdmin;return;}
@@ -165,7 +165,7 @@ function openAdmin(){
 }
 render();
 (async()=>{try{claudeUser=await claude.use('user');isAdmin=!!(claudeUser&&claudeUser.canEdit());}catch(e){}openAdmin();})();
-addEventListener('hashchange',()=>{if(location.hash==='#admin')openAdmin();else{const a=document.getElementById('adm');if(a)a.remove()}});
+addEventListener('hashchange',()=>{if((location.hash==='#admin'||/\/admin\/?$/.test(location.pathname)))openAdmin();else{const a=document.getElementById('adm');if(a)a.remove()}});
 
 // ---------- 3D background ----------
 (function(){
